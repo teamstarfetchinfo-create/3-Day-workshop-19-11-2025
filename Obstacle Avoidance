@@ -1,0 +1,129 @@
+#include <AFMotor.h>
+#include <Servo.h>
+
+// Motor setup (Adafruit Motor Shield)
+AF_DCMotor motor1(1);  // Left motor on M1
+AF_DCMotor motor2(2);  // Right motor on M2
+
+// Ultrasonic sensor pins
+#define TRIG_PIN 2
+#define ECHO_PIN 10
+
+// Servo setup
+Servo myservo;
+int servoPin = 9;
+
+// Variables
+long duration;
+int distance;
+int leftDistance, rightDistance, frontDistance;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Setup motors
+  motor1.setSpeed(200);
+  motor2.setSpeed(200);
+
+  // Setup pins
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // Setup servo
+  myservo.attach(servoPin);
+  myservo.write(90); // center
+
+  Serial.println("Obstacle Avoidance Robot Started");
+}
+
+void loop() {
+  // Look straight
+  myservo.write(90);
+  delay(300);
+  frontDistance = getDistance();
+  Serial.print("Front Distance: ");
+  Serial.println(frontDistance);
+
+  if (frontDistance <= 20 && frontDistance > 0) {
+    stopMoving();
+    delay(300);
+
+    // Look left
+    myservo.write(150);
+    delay(400);
+    leftDistance = getDistance();
+    Serial.print("Left Distance: ");
+    Serial.println(leftDistance);
+
+    // Look right
+    myservo.write(30);
+    delay(400);
+    rightDistance = getDistance();
+    Serial.print("Right Distance: ");
+    Serial.println(rightDistance);
+
+    // Return to center
+    myservo.write(90);
+    delay(300);
+
+    // Decide direction
+    if (leftDistance > rightDistance) {
+      turnLeft();
+    } else {
+      turnRight();
+    }
+  } else {
+    moveForward();
+  }
+
+  delay(100);
+}
+
+// --- Motor Control Functions ---
+void moveForward() {
+  Serial.println("Moving Forward");
+  motor1.run(FORWARD);
+  motor2.run(FORWARD);
+}
+
+void moveBackward() {
+  Serial.println("Moving Backward");
+  motor1.run(BACKWARD);
+  motor2.run(BACKWARD);
+}
+
+void turnLeft() {
+  Serial.println("Turning Left");
+  motor1.run(BACKWARD);
+  motor2.run(FORWARD);
+  delay(400);
+  stopMoving();
+}
+
+void turnRight() {
+  Serial.println("Turning Right");
+  motor1.run(FORWARD);
+  motor2.run(BACKWARD);
+  delay(400);
+  stopMoving();
+}
+
+void stopMoving() {
+  Serial.println("Stop");
+  motor1.run(RELEASE);
+  motor2.run(RELEASE);
+  delay(200);
+}
+
+// --- Ultrasonic Distance Function ---
+int getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  duration = pulseIn(ECHO_PIN, HIGH, 25000); // timeout 25ms
+  int cm = duration * 0.034 / 2;
+  return cm;
+}
